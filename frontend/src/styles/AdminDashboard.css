@@ -1,0 +1,78 @@
+.admin-dashboard {
+    max-width: 1200px;
+    margin: 40px auto;
+    padding: 0 20px;
+}
+
+.add-cake-section {
+    background: white;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    margin-bottom: 40px;
+}
+
+.add-cake-section form {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.add-cake-section textarea {
+    grid-column: span 2;
+    padding: 10px;
+    border: 1px solid var(--border-color);
+}
+
+.add-cake-section input,
+.add-cake-section select {
+    padding: 10px;
+    border: 1px solid var(--border-color);
+}
+
+.orders-section {
+    background: white;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+th,
+td {
+    padding: 15px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+th {
+    background: var(--gray-bg);
+    font-size: 14px;
+}
+
+.status {
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 12px;
+}
+
+.pending {
+    color: #f39c12;
+}
+
+.preparing {
+    color: #3498db;
+}
+
+.out {
+    color: var(--primary-color);
+}
+
+.delivered {
+    color: var(--success-color);
+}
