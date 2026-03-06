@@ -1,53 +1,131 @@
 const express = require('express');
-const Cart = require('../models/Cart');
+const { Query, ID } = require('node-appwrite');
+const { databases, DATABASE_ID, CART_COLLECTION_ID } = require('../config/appwrite');
 const { protect } = require('../middleware/authMiddleware');
 const router = express.Router();
 
 // @desc    Get user cart
 // @route   GET /api/cart
 router.get('/', protect, async (req, res) => {
-    const cart = await Cart.findOne({ userId: req.user._id });
-    if (cart) res.json(cart);
-    else res.json({ items: [], totalPrice: 0 });
+    try {
+        // Find cart by userId
+        const response = await databases.listDocuments(
+            DATABASE_ID,
+            CART_COLLECTION_ID,
+            [Query.equal('userId', req.user._id)]
+        );
+
+        if (response.total > 0) {
+            const cart = response.documents[0];
+            res.json({
+                ...cart,
+                _id: cart.$id,
+                items: JSON.parse(cart.items)
+            });
+        } else {
+            res.json({ items: [], totalPrice: 0 });
+        }
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
 });
 
 // @desc    Add item to cart
 // @route   POST /api/cart
 router.post('/', protect, async (req, res) => {
-    const { cakeId, name, price, imageUrl, quantity } = req.body;
-    let cart = await Cart.findOne({ userId: req.user._id });
+    try {
+        const { cakeId, name, price, imageUrl, quantity } = req.body;
 
-    if (cart) {
-        const itemIndex = cart.items.findIndex((item) => item.cakeId.toString() === cakeId);
-        if (itemIndex > -1) {
-            cart.items[itemIndex].quantity += quantity;
+        const response = await databases.listDocuments(
+            DATABASE_ID,
+            CART_COLLECTION_ID,
+            [Query.equal('userId', req.user._id)]
+        );
+
+        let cart;
+        let items = [];
+
+        if (response.total > 0) {
+            cart = response.documents[0];
+            items = JSON.parse(cart.items);
+
+            const itemIndex = items.findIndex((item) => item.cakeId === cakeId);
+            if (itemIndex > -1) {
+                items[itemIndex].quantity += quantity;
+            } else {
+                items.push({ cakeId, name, price, imageUrl, quantity });
+            }
+
+            const totalPrice = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
+
+            const updatedCart = await databases.updateDocument(
+                DATABASE_ID,
+                CART_COLLECTION_ID,
+                cart.$id,
+                {
+                    items: JSON.stringify(items),
+                    totalPrice
+                }
+            );
+
+            res.json({ ...updatedCart, _id: updatedCart.$id, items });
         } else {
-            cart.items.push({ cakeId, name, price, imageUrl, quantity });
+            const totalPrice = price * quantity;
+            items = [{ cakeId, name, price, imageUrl, quantity }];
+
+            const newCart = await databases.createDocument(
+                DATABASE_ID,
+                CART_COLLECTION_ID,
+                ID.unique(),
+                {
+                    userId: req.user._id,
+                    items: JSON.stringify(items),
+                    totalPrice
+                }
+            );
+
+            res.json({ ...newCart, _id: newCart.$id, items });
         }
-        cart.totalPrice = cart.items.reduce((acc, item) => acc + item.price * item.quantity, 0);
-        await cart.save();
-    } else {
-        cart = await Cart.create({
-            userId: req.user._id,
-            items: [{ cakeId, name, price, imageUrl, quantity }],
-            totalPrice: price * quantity,
-        });
+    } catch (error) {
+        res.status(400).json({ message: error.message });
     }
-    res.json(cart);
 });
 
 // @desc    Remove item from cart
 // @route   DELETE /api/cart/:cakeId
 router.delete('/:cakeId', protect, async (req, res) => {
-    const cart = await Cart.findOne({ userId: req.user._id });
-    if (cart) {
-        cart.items = cart.items.filter((item) => item.cakeId.toString() !== req.params.cakeId);
-        cart.totalPrice = cart.items.reduce((acc, item) => acc + item.price * item.quantity, 0);
-        await cart.save();
-        res.json(cart);
-    } else {
-        res.status(404).json({ message: 'Cart not found' });
+    try {
+        const response = await databases.listDocuments(
+            DATABASE_ID,
+            CART_COLLECTION_ID,
+            [Query.equal('userId', req.user._id)]
+        );
+
+        if (response.total > 0) {
+            const cart = response.documents[0];
+            let items = JSON.parse(cart.items);
+
+            items = items.filter((item) => item.cakeId !== req.params.cakeId);
+            const totalPrice = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
+
+            const updatedCart = await databases.updateDocument(
+                DATABASE_ID,
+                CART_COLLECTION_ID,
+                cart.$id,
+                {
+                    items: JSON.stringify(items),
+                    totalPrice
+                }
+            );
+
+            res.json({ ...updatedCart, _id: updatedCart.$id, items });
+        } else {
+            res.status(404).json({ message: 'Cart not found' });
+        }
+    } catch (error) {
+        res.status(400).json({ message: error.message });
     }
 });
 
 module.exports = router;
+

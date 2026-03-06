@@ -2,10 +2,9 @@ const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const path = require('path');
-const connectDB = require('./config/db');
-
 dotenv.config();
-connectDB();
+
+// MongoDB connection removed - Using Appwrite
 const setupReminderCron = require('./cron/reminderCron');
 setupReminderCron();
 
